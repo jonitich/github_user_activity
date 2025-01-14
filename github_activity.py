@@ -20,41 +20,58 @@ def fetch_activity(user):
     req = requests.get(f"https://api.github.com/users/{user}/events/public", headers=headers)
     return req.json()
 
-def get_event_from_repo(repo, user):
-    """ Get all events of a repo """
+def get_repo_commits(repo, user):
+    """ Get all commits """
     
-    print(f"Checking events of {repo} repository.")
     activity = fetch_activity(user)
-    
-    # Commit loop
     i = 0
     for event in activity:
         if event["repo"]["name"] == repo and event["type"] == "PushEvent" and event["payload"]["commits"]:
             i += 1
-    
-    print(f"- Pushed {i} commits to {repo}")
+    return i
 
 def get_repo_names(user):
-    """ Group repos' names """
+    """ Get all repos' name fetched and delete duplications. """
     
     activity = fetch_activity(user)
     repos = {repo["repo"]["name"] for repo in activity}
     return repos
 
-
 def main():
     # User Parser
     parser = argparse.ArgumentParser()
     parser.add_argument("user", type=str, help="User to get activity from.")
+    parser.add_argument("--debug", help="Print all events")
     
     # Parse argument
     args = parser.parse_args()
+    print(args)
     
     # Get activity
-    repos = get_repo_names(args.user)
-    for repo in repos:
-        get_event_from_repo(repo, args.user)
+    activity = fetch_activity(args.user)
+    if args.debug:
+        for event in activity:
+            print("++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            print(event)
+            print("----------------------------------------------------")
+    for event in activity: # Print events other than PushEvent
+        repo = event["repo"]["name"]
+        if event["type"] == "IssuesEvent":
+            print(f"- Opened a Issue in {repo}.")
+        elif event["type"] == "WatchEvent":
+            print(f"- Starred {repo}.")
+    
+    for repo in get_repo_names(args.user): # Print PushEvent
+        commits = get_repo_commits(repo, args.user)
+        if not commits == 0:
+            print(f"- Pushed {commits} to {repo}.")
 
 
 if __name__ == "__main__":
     main()
+
+
+# if event["type"] == "PushEvent":
+#     commits = get_repo_commits(event["repo"]["name"], args.user)
+#     if not commits == 0:
+#         print(f"- Pushed {commits} commits to {repo}")
