@@ -3,21 +3,33 @@ import json
 import argparse
 import io
 
-def read_token():
+# Constant values
+api = "https://api.github.com/"
+
+def auth():
     file = io.open("/home/jredondo/programming/.github/github_user_activity.token", "r")
     token = file.readline().strip('\n')
     file.close()
-    return token
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer " + str(token),
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+    return headers
+
+def verify_user(user):
+    """ Verify if the user exists """
+    
+    req = requests.get(f"{api}/users/{user}")
+    if req.status_code == 200:
+        return True
+    else:
+        return False
 
 def fetch_activity(user):
     """ Get github's user actitvity """
     
-    headers = {
-    "Accept": "application/vnd.github+json",
-    "Authorization": "Bearer " + str(read_token()),
-    "X-GitHub-Api-Version": "2022-11-28"
-    }
-    req = requests.get(f"https://api.github.com/users/{user}/events/public", headers=headers)
+    req = requests.get(f"{api}users/{user}/events/public", headers=auth())
     return req.json()
 
 def get_repo_commits(repo, user):
@@ -45,33 +57,31 @@ def main():
     
     # Parse argument
     args = parser.parse_args()
-    print(args)
     
-    # Get activity
-    activity = fetch_activity(args.user)
-    if args.debug:
-        for event in activity:
-            print("++++++++++++++++++++++++++++++++++++++++++++++++++++")
-            print(event)
-            print("----------------------------------------------------")
-    for event in activity: # Print events other than PushEvent
-        repo = event["repo"]["name"]
-        if event["type"] == "IssuesEvent":
-            print(f"- Opened a Issue in {repo}.")
-        elif event["type"] == "WatchEvent":
-            print(f"- Starred {repo}.")
-    
-    for repo in get_repo_names(args.user): # Print PushEvent
-        commits = get_repo_commits(repo, args.user)
-        if not commits == 0:
-            print(f"- Pushed {commits} to {repo}.")
+    # Verify User
+    user = verify_user(args.user)
+    if not user:
+        print(f"There's no such user {args.user}")
+    else:
+        # Get activity
+        activity = fetch_activity(args.user)
+        if args.debug:
+            for event in activity:
+                print("++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                print(event)
+                print("----------------------------------------------------")
+        for event in activity: # Print events other than PushEvent
+            repo = event["repo"]["name"]
+            if event["type"] == "IssuesEvent":
+                print(f"- Opened a Issue in {repo}.")
+            elif event["type"] == "WatchEvent":
+                print(f"- Starred {repo}.")
+            
+        for repo in get_repo_names(args.user): # Print PushEvent
+            commits = get_repo_commits(repo, args.user)
+            if not commits == 0:
+                print(f"- Pushed {commits} to {repo}.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  
     main()
-
-
-# if event["type"] == "PushEvent":
-#     commits = get_repo_commits(event["repo"]["name"], args.user)
-#     if not commits == 0:
-#         print(f"- Pushed {commits} commits to {repo}")
