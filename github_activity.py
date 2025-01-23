@@ -73,6 +73,8 @@ def main():
             commits = get_events(repo, "PushEvent", activity)
             issues_events = get_events(repo, "IssuesEvent", activity)
             watch_events = get_events(repo, "WatchEvent", activity)
+            pr_review = get_events(repo, "PullRequestReviewEvent", activity)
+            
             if watch_events > 0:
                 watch_events = True
             else:
@@ -82,7 +84,8 @@ def main():
                     - Commits: {commits} \n \
                     - Opened Issues: {issues_events} \n \
                     - Starred: {watch_events} \n \
-                    - Pull Requests: {pr_events}")
+                    - Pull Requests: {pr_events} \n \
+                    - Pull Requests Review: {pr_review}")
 
 
 
