@@ -6,7 +6,7 @@ The aim of this application is to fetch public events from a Github's user.
 
 - Requests module needs to be installed
 ```bash
-pip3 install requests
+pip3 install -r requirements.txt
 ```
 
 ## Usage
