@@ -4,58 +4,83 @@ import os
 
 # Constant values
 api = "https://api.github.com/"
-token_path = os.getenv("FILE_PATH")
+token = os.getenv("GITHUB_TOKEN", "error")
+if token == "error":
+    raise Exception("Set GITHUB_TOKEN environment variable.")
+
 
 def auth():
-    with open(token_path, "r") as f:
-        token = f.read().strip()
     headers = {
         "Accept": "application/vnd.github+json",
         "Authorization": "Bearer " + str(token),
-        "X-GitHub-Api-Version": "2022-11-28"
+        "X-GitHub-Api-Version": "2022-11-28",
     }
     return headers
 
+
 def verify_user(user):
-    """ Verify if the user exists """
-    
+    """Verify if the user exists"""
+
     req = requests.get(f"{api}/users/{user}")
     if req.status_code == 200:
         return True
     else:
         return False
 
+
 def fetch_activity(user):
-    """ Get github's user actitvity """
-    
+    """Get github's user actitvity"""
+
     req = requests.get(f"{api}users/{user}/events/public", headers=auth())
+    print(req.headers)
+    if req.status_code != 200:
+        print(f"Error fetching activity: {req.status_code}")
+        return []
     return req.json()
 
-def get_events(repo, event_type, activity):
-    """ Get events """
-    
-    i = 0
+
+def preprocess_events(activity):
+    """
+    Preprocess activity data to categorize events by repository and event type.
+    This reduces redundant iterations during analysis.
+    """
+    processed_data = {}
     for event in activity:
-        if event["repo"]["name"] == repo and event["type"] == event_type:
-            i += 1
-    return i
+        repo_name = event["repo"]["name"]
+        event_type = event["type"]
+        if repo_name not in processed_data:
+            processed_data[repo_name] = {}
+        if event_type not in processed_data[repo_name]:
+            processed_data[repo_name][event_type] = 0
+        processed_data[repo_name][event_type] += 1
+    return processed_data
+
+
+def get_event_count(preprocessed_data, repo, event_type):
+    """
+    Get the count of a specific event type for a given repository from preprocessed data.
+    """
+    if repo in preprocessed_data and event_type in preprocessed_data[repo]:
+        return preprocessed_data[repo][event_type]
+    return 0
 
 
 def get_repo_names(events):
-    """ Get all repos' name and event type fetched and delete duplications. """
-    
+    """Get all repos' name and event type fetched and delete duplications."""
+
     repos = {repo["repo"]["name"] for repo in events}
     return repos
+
 
 def main():
     # User Parser
     parser = argparse.ArgumentParser()
     parser.add_argument("user", type=str, help="User to get activity from.")
-    parser.add_argument("--debug", help="Print all events")
-    
+    parser.add_argument("--debug", action="store_true", help="Print all events")
+
     # Parse argument
     args = parser.parse_args()
-    
+
     # Verify User
     user = verify_user(args.user)
     if not user:
@@ -68,26 +93,12 @@ def main():
                 print("++++++++++++++++++++++++++++++++++++++++++++++++++++")
                 print(event)
                 print("----------------------------------------------------")
-        
-        for repo in get_repo_names(activity): # Print PushEvent
-            commits = get_events(repo, "PushEvent", activity)
-            issues_events = get_events(repo, "IssuesEvent", activity)
-            watch_events = get_events(repo, "WatchEvent", activity)
-            pr_review = get_events(repo, "PullRequestReviewEvent", activity)
-            
-            if watch_events > 0:
-                watch_events = True
-            else:
-                watch_events = False
-            pr_events= get_events(repo, "PullRequestEvent", activity)
-            print(f"Events on repository: {repo}\n \
-                    - Commits: {commits} \n \
-                    - Opened Issues: {issues_events} \n \
-                    - Starred: {watch_events} \n \
-                    - Pull Requests: {pr_events} \n \
-                    - Pull Requests Review: {pr_review}")
+
+        # Preprocess the activity data
+        preprocessed_data = preprocess_events(activity)
+        for repo, events in preprocessed_data.copy().items():
+            print(repo, events)
 
 
-
-if __name__ == "__main__":  
+if __name__ == "__main__":
     main()
