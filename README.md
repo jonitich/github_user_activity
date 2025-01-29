@@ -21,8 +21,4 @@ python3 github_activity.py <username> <options>
 |------------------------------|-----------------------------------------------------------------------------------------------------|---------
 | `--debug`                    | Prints all response events                                                                          | false 
 
-### Caveats
-
-For now it only looks up for 
-
 https://roadmap.sh/projects/github-user-activity
