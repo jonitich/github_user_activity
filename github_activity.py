@@ -32,7 +32,6 @@ def fetch_activity(user):
     """Get github's user actitvity"""
 
     req = requests.get(f"{api}users/{user}/events/public", headers=auth())
-    print(req.headers)
     if req.status_code != 200:
         print(f"Error fetching activity: {req.status_code}")
         return []
